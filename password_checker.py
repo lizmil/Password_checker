@@ -1,7 +1,22 @@
-from PyQt5.QtWidgets import QApplication, QFormLayout, QMessageBox, QVBoxLayout, QWidget, QPushButton, QLineEdit
+from PyQt5.QtWidgets import QApplication, QFormLayout, QMainWindow, QMessageBox, QVBoxLayout, QWidget, QPushButton, QLineEdit, QListWidget
 import hashlib
+import os
 
-'''This is a simply PyQt5 project. You can save your username and password, and you can check it too.'''
+'''
+V1.0
+ * Username input line
+ * Password input line
+ * Save button to save Username and Password
+ * Check button to check Username and Password
+
+V1.1
+ * List Accounts button added - you can list the Usernames
+ * Bug fixed: If user file isn't exist create it
+
+V1.2
+ * Function of List Accounts button fixed.
+
+'''
 
 # Create the main class
 class PasswordChecker(QWidget):
@@ -9,11 +24,12 @@ class PasswordChecker(QWidget):
     # Initalize the app's parameters
     def __init__(self, parent = None):
         super(PasswordChecker, self).__init__(parent)
-        self.setFixedSize(300, 140)
+        self.setFixedSize(300, 170)
         self.setWindowTitle("Password Checker")
+
         
         # We use a dictionary to save the Username and Passwords
-        self.initDict() 
+        self.useDict() 
 
         # Initalize the User Interface
         self.initUI()
@@ -41,6 +57,10 @@ class PasswordChecker(QWidget):
         buttonCheck = QPushButton("Check")
         buttonCheck.clicked.connect(lambda: self.checkFunc(self.userLine.text(), self.pwdLine.text()))
 
+        # Create the List button
+        buttonList = QPushButton("List Usernames")
+        buttonList.clicked.connect(self.usersList)
+
         # Create the FormLayout (row added)
         form.addRow("Username:", self.userLine)
         form.addRow("Password:", self.pwdLine)
@@ -49,9 +69,22 @@ class PasswordChecker(QWidget):
         vbox.addLayout(form)
         vbox.addWidget(buttonSave)
         vbox.addWidget(buttonCheck)
+        vbox.addWidget(buttonList)
         self.setLayout(vbox)
 
     #----- Initalize dictionary method -----
+    def useDict(self):
+
+        # If user file is already exist
+        if not os.path.isfile("users.omg"):
+            with open("users.omg", "w") as createFile:
+                createFile.write("")
+         
+
+        else:
+
+            self.initDict()
+
     def initDict(self):
 
         # Create dictionary
@@ -85,6 +118,13 @@ class PasswordChecker(QWidget):
 
                         # Put the currently Username and Password to dictionary if there is § + ×
                         self.users[userNow] = pwdNow
+        
+        return self.users
+                    
+    def returnUsers(self):
+        for user in self.users:
+            return user
+
 
     #----- Password hashing ----->
     def hashPwd(self, pwd):
@@ -99,7 +139,7 @@ class PasswordChecker(QWidget):
     def saveFunc(self, user, pwd):
         
         # Initalize Dictionary (Username, Password)
-        self.initDict()
+        self.useDict()
 
         # Hash Password by sha256
         self.hashPwd(pwd)
@@ -135,7 +175,7 @@ class PasswordChecker(QWidget):
     def checkFunc(self, user, pwd):
 
         # Initalize Dictionary (Username, Password)
-        self.initDict()
+        self.useDict()
         
         # Hash Password by sha256
         self.hashPwd(pwd)
@@ -163,7 +203,75 @@ class PasswordChecker(QWidget):
         self.userLine.setText("")
         self.pwdLine.setText("")
 
-# Rund the app if its name is __main__
+    def usersList(self):
+
+        self.userListWindow = UserList(self)
+        self.userListWindow.show()
+        return self.users
+
+# ----- List of accounts windows -----    
+class UserList(QMainWindow):
+
+    def __init__(self, parent = None):
+        super(UserList, self).__init__(parent)
+
+        # Set title of window
+        self.setWindowTitle("Username list")
+
+        # Set window's width
+        self.setFixedWidth(300)
+
+        # Make object from QListWidget
+        self.usersList = QListWidget()
+
+        # Set the object as central widget
+        self.setCentralWidget(self.usersList) 
+
+        # Initalize Dictionary in UserList
+        self.initDict()
+
+
+    #----- Initalize dictionary method -----
+    def initDict(self):
+    
+        # Create dictionary
+        self.users = {}
+
+        # Open the file where the Usernames and Passwords are saved
+        with open('users.omg', 'r') as readFile:
+
+            # Load the lines
+            for line in readFile:
+                text = str(line)
+
+                # Need a counter to initalize the start and end of Usernames and Passwords
+                startA = 0
+                endA = 0
+
+                # Check the alphabets one-by-one
+                for index, a in enumerate(text):
+                    
+                    # If it finds a §, then Username ist from startA to endA
+                    if a == '§':
+                        endA = index
+                        userNow = text[startA:endA]
+                        startA = index + 1
+
+                    # If it finds a ×, then Passwors ist from startA to endA
+                    elif a == '×':
+                        endA = index
+                        pwdNow = text[startA:endA]
+                        startA = index + 1
+
+                        # Put the currently Username and Password to dictionary if there is § + ×
+                        self.users[userNow] = pwdNow
+        
+        # Search files
+        for user in self.users:
+            self.usersList.addItem(user)
+
+
+# Rund the app if it' the main window
 if __name__ == "__main__":
 
     import sys
@@ -171,7 +279,7 @@ if __name__ == "__main__":
     window = PasswordChecker()
     window.show()
 
-    # This parameter is needed for clear exit
+    # This parameter need for clear exit
     sys.exit(app.exec_())
 
 
